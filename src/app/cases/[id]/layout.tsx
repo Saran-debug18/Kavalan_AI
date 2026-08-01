@@ -3,9 +3,8 @@
 import { useEffect, useState } from "react";
 import { useParams, usePathname } from "next/navigation";
 import Link from "next/link";
-import AppShell from "@/components/layout/AppShell";
-import Sidebar from "@/components/layout/Sidebar";
 import TopBar from "@/components/layout/TopBar";
+import { CaseWorkspaceSkeleton } from "@/components/ui/Skeleton";
 import { RiskBadge } from "@/components/ui/RiskBadge";
 import { CaseStatusControl } from "@/components/cases/CaseStatusControl";
 import type { Case } from "@/types";
@@ -49,37 +48,24 @@ export default function CaseWorkspaceLayout({
 	}, [id]);
 
 	if (loading) {
-		return (
-			<AppShell sidebar={<Sidebar />}>
-				<div className="flex items-center justify-center h-64">
-					<span
-						className="font-mono text-sm"
-						style={{ color: "var(--text-dim)" }}
-					>
-						LOADING...
-					</span>
-				</div>
-			</AppShell>
-		);
+		return <CaseWorkspaceSkeleton />;
 	}
 
 	if (error || !caseData) {
 		return (
-			<AppShell sidebar={<Sidebar />}>
-				<div className="flex items-center justify-center h-64">
-					<span
-						className="font-mono text-sm"
-						style={{ color: "var(--critical)" }}
-					>
-						{error ?? "CASE NOT FOUND"}
-					</span>
-				</div>
-			</AppShell>
+			<div className="flex items-center justify-center h-64">
+				<span
+					className="font-mono text-sm"
+					style={{ color: "var(--critical)" }}
+				>
+					{error ?? "CASE NOT FOUND"}
+				</span>
+			</div>
 		);
 	}
 
 	return (
-		<AppShell sidebar={<Sidebar />}>
+		<>
 			<TopBar
 				title={caseData.caseRef}
 				subtitle={caseData.title}
@@ -104,7 +90,7 @@ export default function CaseWorkspaceLayout({
 					borderBottom: "1px solid var(--border)",
 				}}
 			>
-				<nav className="flex px-6" style={{ gap: 0 }}>
+				<nav className="flex px-4 md:px-6 overflow-x-auto" style={{ gap: 0 }}>
 					{TABS.map((tab) => {
 						const href = `/cases/${id}${tab.path}`;
 						const isActive =
@@ -117,7 +103,7 @@ export default function CaseWorkspaceLayout({
 								href={href}
 								style={{
 									display: "inline-block",
-									padding: "10px 16px",
+									padding: "10px 12px",
 									fontFamily: "var(--font-mono, monospace)",
 									fontSize: "11px",
 									letterSpacing: "0.08em",
@@ -140,6 +126,6 @@ export default function CaseWorkspaceLayout({
 
 			{/* Tab content */}
 			{children}
-		</AppShell>
+		</>
 	);
 }

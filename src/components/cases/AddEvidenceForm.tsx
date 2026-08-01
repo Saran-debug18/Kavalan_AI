@@ -1,7 +1,8 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { EvidenceType } from "@/types";
+import { useToast } from "@/components/ui/Toast";
 
 interface AddEvidenceFormProps {
 	caseId: string;
@@ -39,6 +40,7 @@ const labelStyle: React.CSSProperties = {
 };
 
 export function AddEvidenceForm({ caseId, onCreated }: AddEvidenceFormProps) {
+	const toast = useToast();
 	const [open, setOpen] = useState(false);
 	const [submitting, setSubmitting] = useState(false);
 	const [status, setStatus] = useState<string | null>(null);
@@ -56,13 +58,26 @@ export function AddEvidenceForm({ caseId, onCreated }: AddEvidenceFormProps) {
 	const [image, setImage] = useState<File | null>(null);
 	const [imagePreview, setImagePreview] = useState<string | null>(null);
 	const fileRef = useRef<HTMLInputElement>(null);
+	const [sessionName, setSessionName] = useState("Investigator");
+
+	useEffect(() => {
+		fetch("/api/auth/me")
+			.then((res) => (res.ok ? res.json() : null))
+			.then((data) => {
+				if (data?.name) {
+					setSessionName(data.name);
+					setForm((f) => ({ ...f, analyst: data.name }));
+				}
+			})
+			.catch(() => {});
+	}, []);
 
 	function resetForm() {
 		setForm({
 			type: "PHYSICAL",
 			description: "",
 			location: "",
-			analyst: "Investigator",
+			analyst: sessionName,
 			notes: "",
 			confidence: "0.85",
 			collectedAt: "",
@@ -114,10 +129,13 @@ export function AddEvidenceForm({ caseId, onCreated }: AddEvidenceFormProps) {
 			const data = await res.json().catch(() => ({}));
 			if (!res.ok) throw new Error(data.error ?? `HTTP ${res.status}`);
 			setStatus(`Added ${data.catalogRef}.`);
+			toast.success(`Evidence ${data.catalogRef} added to the case.`);
 			resetForm();
 			onCreated?.();
 		} catch (err) {
-			setError(err instanceof Error ? err.message : "Unknown error");
+			const message = err instanceof Error ? err.message : "Unknown error";
+			setError(message);
+			toast.error(`Failed to add evidence: ${message}`);
 		} finally {
 			setSubmitting(false);
 		}
@@ -157,13 +175,13 @@ export function AddEvidenceForm({ caseId, onCreated }: AddEvidenceFormProps) {
 
 			{open && (
 				<div
+					className="grid grid-cols-1 sm:grid-cols-3"
 					style={{
 						marginTop: 10,
 						padding: 12,
 						border: "1px solid var(--border)",
 						background: "var(--bg-surface-1)",
 						display: "grid",
-						gridTemplateColumns: "1fr 1fr 1fr",
 						gap: 10,
 					}}
 				>

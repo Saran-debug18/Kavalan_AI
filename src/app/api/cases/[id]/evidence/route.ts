@@ -2,6 +2,7 @@ export const dynamic = "force-dynamic";
 import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { randomUUID } from "crypto";
+import { getSessionAgentName } from "@/lib/auth";
 import fs from "fs";
 import path from "path";
 import type { EvidenceType } from "@/types";
@@ -174,7 +175,7 @@ export async function POST(
 			type: "EVIDENCE_ADDED",
 			description: `${type} evidence ${catalogRef} added: ${description.slice(0, 80)}${description.length > 80 ? "..." : ""}${imagePath ? " (with image)" : ""}`,
 			createdAt: new Date().toISOString(),
-			agent: analyst,
+			agent: await getSessionAgentName(request),
 		});
 
 		const row = db.prepare("SELECT * FROM evidence WHERE id = ?").get(id);

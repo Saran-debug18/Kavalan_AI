@@ -4,8 +4,9 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Shield, LayoutDashboard, FolderOpen, Plus, Database, Map } from "lucide-react";
 import { cn } from "@/lib/utils";
+import UserMenu from "./UserMenu";
 
-const NAV_ITEMS = [
+export const NAV_ITEMS = [
 	{ label: "Dashboard", href: "/", icon: LayoutDashboard },
 	{ label: "Cases", href: "/cases", icon: FolderOpen },
 	{ label: "New Case", href: "/cases/new", icon: Plus },
@@ -18,7 +19,7 @@ export default function Sidebar() {
 
 	return (
 		<nav
-			className="flex h-full w-[240px] flex-col bg-surface-1 border-r border-border-DEFAULT"
+			className="hidden md:flex h-full w-[240px] flex-col bg-surface-1 border-r border-border-DEFAULT"
 			aria-label="Primary navigation"
 		>
 			{/* Wordmark */}
@@ -71,12 +72,8 @@ export default function Sidebar() {
 				})}
 			</ul>
 
-			{/* Bottom console badge */}
-			<div className="px-5 py-4 border-t border-border-DEFAULT">
-				<p className="font-mono text-xs uppercase tracking-wider text-dim">
-					ANALYST CONSOLE
-				</p>
-			</div>
+			{/* Bottom: analyst identity + logout */}
+			<UserMenu variant="sidebar" />
 		</nav>
 	);
 }

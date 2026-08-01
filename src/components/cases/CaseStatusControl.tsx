@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { ChevronDown, Check } from "lucide-react";
 import type { CaseStatus } from "@/types";
 import { StatusStamp } from "@/components/ui/StatusStamp";
+import { useToast } from "@/components/ui/Toast";
 
 interface CaseStatusControlProps {
 	caseId: string;
@@ -29,6 +30,7 @@ export function CaseStatusControl({
 	const [updating, setUpdating] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 	const ref = useRef<HTMLDivElement>(null);
+	const toast = useToast();
 
 	useEffect(() => setCurrent(status), [status]);
 
@@ -58,9 +60,12 @@ export function CaseStatusControl({
 			if (!res.ok)
 				throw new Error(data.error ?? `HTTP ${res.status}`);
 			onChanged?.(next);
+			toast.success(`Case status changed to ${next}.`);
 		} catch (err) {
 			setCurrent(prev); // rollback
-			setError(err instanceof Error ? err.message : "Update failed");
+			const message = err instanceof Error ? err.message : "Update failed";
+			setError(message);
+			toast.error(`Status update failed: ${message}`);
 		} finally {
 			setUpdating(false);
 		}

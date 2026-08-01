@@ -7,6 +7,7 @@ import type { AutopsyReport } from "@/types";
 import { formatDateTime } from "@/lib/utils";
 import { Badge } from "@/components/ui/Badge";
 import { ConfidenceBar } from "@/components/ui/ConfidenceBar";
+import { useToast } from "@/components/ui/Toast";
 
 interface AutopsyPanelProps {
 	caseId: string;
@@ -69,6 +70,7 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
 }
 
 export function AutopsyPanel({ caseId, existingReport }: AutopsyPanelProps) {
+	const toast = useToast();
 	const [form, setForm] = useState<FormState>({
 		rawReport: existingReport?.rawReport ?? "",
 		bodyTemperature: existingReport?.bodyTemperature?.toString() ?? "",
@@ -151,8 +153,11 @@ export function AutopsyPanel({ caseId, existingReport }: AutopsyPanelProps) {
 			setDraftStatus(
 				`Draft saved at ${new Date(data.savedAt).toLocaleTimeString()}.`,
 			);
+			toast.success("Draft saved.");
 		} catch (err) {
-			setError(err instanceof Error ? err.message : "Draft save failed");
+			const message = err instanceof Error ? err.message : "Draft save failed";
+			setError(message);
+			toast.error(`Draft save failed: ${message}`);
 		} finally {
 			setSavingDraft(false);
 		}
@@ -178,9 +183,13 @@ export function AutopsyPanel({ caseId, existingReport }: AutopsyPanelProps) {
 			setExtractStatus(
 				`Transcribed ${file.name} (${Math.round(file.size / 1024)} KB). Review and click Run Analysis.`,
 			);
+			toast.success(`Transcribed ${file.name}.`);
 		} catch (err) {
-			setError(err instanceof Error ? err.message : "Image extraction failed");
+			const message =
+				err instanceof Error ? err.message : "Image extraction failed";
+			setError(message);
 			setExtractStatus(null);
+			toast.error(`Image extraction failed: ${message}`);
 		} finally {
 			setExtracting(null);
 		}
@@ -206,9 +215,13 @@ export function AutopsyPanel({ caseId, existingReport }: AutopsyPanelProps) {
 			setExtractStatus(
 				`Parsed ${file.name} (${data.rowsParsed} rows). Review and click Run Analysis.`,
 			);
+			toast.success(`Parsed ${file.name} (${data.rowsParsed} rows).`);
 		} catch (err) {
-			setError(err instanceof Error ? err.message : "CSV extraction failed");
+			const message =
+				err instanceof Error ? err.message : "CSV extraction failed";
+			setError(message);
 			setExtractStatus(null);
+			toast.error(`CSV extraction failed: ${message}`);
 		} finally {
 			setExtracting(null);
 		}
@@ -271,17 +284,20 @@ export function AutopsyPanel({ caseId, existingReport }: AutopsyPanelProps) {
 			}
 			const data = (await res.json()) as AutopsyReport;
 			setResult(data);
+			toast.success("Autopsy analysis complete.");
 		} catch (err) {
-			setError(err instanceof Error ? err.message : "Unknown error");
+			const message = err instanceof Error ? err.message : "Unknown error";
+			setError(message);
+			toast.error(`Analysis failed: ${message}`);
 		} finally {
 			setLoading(false);
 		}
 	}
 
 	return (
-		<div className="flex gap-0 w-full min-h-[500px]">
+		<div className="flex flex-col md:flex-row gap-0 w-full md:min-h-[500px]">
 			{/* LEFT PANE */}
-			<div className="w-[40%] border-r border-border-DEFAULT p-4 flex flex-col gap-3">
+			<div className="w-full md:w-[40%] border-b md:border-b-0 md:border-r border-border-DEFAULT p-4 flex flex-col gap-3">
 				<div className="font-mono text-xs uppercase tracking-widest text-muted border-b border-border-DEFAULT pb-2">
 					Autopsy Analysis Input
 				</div>

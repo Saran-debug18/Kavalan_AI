@@ -1,8 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import AppShell from "@/components/layout/AppShell";
-import Sidebar from "@/components/layout/Sidebar";
 import TopBar from "@/components/layout/TopBar";
 
 interface TableSnapshot {
@@ -65,12 +63,12 @@ export default function InspectPage() {
 	);
 
 	return (
-		<AppShell sidebar={<Sidebar />}>
+		<>
 			<TopBar
 				title="DB INSPECTOR"
 				subtitle="LIVE STORAGE · API · AI TELEMETRY"
 			/>
-			<div className="p-6">
+			<div className="p-4 md:p-6">
 				<div className="flex items-center gap-4 mb-4 flex-wrap">
 					<button
 						onClick={load}
@@ -216,6 +214,6 @@ export default function InspectPage() {
 					</>
 				)}
 			</div>
-		</AppShell>
+		</>
 	);
 }

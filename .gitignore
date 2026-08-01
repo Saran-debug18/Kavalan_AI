@@ -6,3 +6,6 @@ data/
 .env.*.local
 tsconfig.tsbuildinfo
 *.log
+ml/models/
+*.onnx
+*.pt

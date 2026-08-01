@@ -6,6 +6,7 @@ import { Clock } from "lucide-react";
 import type { TodEstimate } from "@/types";
 import { formatDateTime } from "@/lib/utils";
 import { ConfidenceBar } from "@/components/ui/ConfidenceBar";
+import { useToast } from "@/components/ui/Toast";
 
 interface TodPanelProps {
 	caseId: string;
@@ -71,6 +72,7 @@ function LoadingDots() {
 }
 
 export function TodPanel({ caseId, existingEstimate }: TodPanelProps) {
+	const toast = useToast();
 	const [form, setForm] = useState<FormState>({
 		bodyTemp: existingEstimate?.bodyTemp?.toString() ?? "",
 		ambientTemp: existingEstimate?.ambientTemp?.toString() ?? "",
@@ -148,17 +150,20 @@ export function TodPanel({ caseId, existingEstimate }: TodPanelProps) {
 			}
 			const data = (await res.json()) as TodEstimate;
 			setResult(data);
+			toast.success("Time-of-death estimate generated.");
 		} catch (err) {
-			setError(err instanceof Error ? err.message : "Unknown error");
+			const message = err instanceof Error ? err.message : "Unknown error";
+			setError(message);
+			toast.error(`TOD estimation failed: ${message}`);
 		} finally {
 			setLoading(false);
 		}
 	}
 
 	return (
-		<div className="flex gap-0 w-full min-h-[500px]">
+		<div className="flex flex-col md:flex-row gap-0 w-full md:min-h-[500px]">
 			{/* LEFT PANE */}
-			<div className="w-[40%] border-r border-border-DEFAULT p-4 flex flex-col gap-3">
+			<div className="w-full md:w-[40%] border-b md:border-b-0 md:border-r border-border-DEFAULT p-4 flex flex-col gap-3">
 				<div className="font-mono text-xs uppercase tracking-widest text-muted border-b border-border-DEFAULT pb-2">
 					Tod Estimation Input
 				</div>

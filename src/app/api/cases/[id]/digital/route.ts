@@ -2,6 +2,7 @@ export const dynamic = "force-dynamic";
 import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { randomUUID } from "crypto";
+import { getSessionAgentName } from "@/lib/auth";
 import type { DigitalEvidence, DigitalSourceType } from "@/types";
 
 const VALID_SOURCES: DigitalSourceType[] = [
@@ -204,6 +205,7 @@ export async function POST(
       VALUES ($id,$caseId,$type,$description,$createdAt,$agent)
     `);
 
+		const agentName = await getSessionAgentName(request);
 		const tx = db.transaction(() => {
 			for (const r of valid) stmt.run(r);
 			activity.run({
@@ -212,7 +214,7 @@ export async function POST(
 				type: "EVIDENCE_ADDED",
 				description: `${valid.length} digital evidence record${valid.length === 1 ? "" : "s"} added.`,
 				createdAt: new Date().toISOString(),
-				agent: "Investigator",
+				agent: agentName,
 			});
 		});
 		tx();

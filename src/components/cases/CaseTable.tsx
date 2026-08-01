@@ -73,7 +73,44 @@ export function CaseTable({ cases, onCaseClick }: CaseTableProps) {
 	}
 
 	return (
-		<div className="w-full overflow-x-auto">
+		<div className="w-full">
+			{/* Mobile card list */}
+			<div className="flex flex-col gap-2 md:hidden">
+				{sorted.map((c, i) => (
+					<motion.div
+						key={c.id}
+						initial={{ opacity: 0, y: 8 }}
+						animate={{ opacity: 1, y: 0 }}
+						transition={{ duration: 0.25, ease: "easeOut", delay: i * 0.02 }}
+						onClick={() => handleRowClick(c)}
+						className="border border-border-DEFAULT bg-surface-1 active:bg-surface-2 p-3 flex flex-col gap-2"
+					>
+						<div className="flex items-center justify-between gap-2">
+							<span className="font-mono text-xs text-amber-dim">
+								{c.caseRef}
+							</span>
+							<div className="flex items-center gap-2 shrink-0">
+								<RiskBadge level={c.riskLevel} score={c.riskScore} />
+							</div>
+						</div>
+						<span className="text-sm text-data leading-snug">{c.title}</span>
+						<div className="flex items-center justify-between gap-2">
+							<span className="text-xs text-muted truncate">
+								{c.victimName || "—"} · {c.location || "—"}
+							</span>
+							<StatusStamp status={c.status} />
+						</div>
+						<div className="flex items-center justify-between font-mono text-xs text-dim">
+							<span>{formatDate(c.dateOfIncident)}</span>
+							<span>{c.evidenceCount} evidence</span>
+							<span className="truncate max-w-[40%]">{c.assignedAgent}</span>
+						</div>
+					</motion.div>
+				))}
+			</div>
+
+			{/* Desktop table */}
+			<div className="hidden md:block w-full overflow-x-auto">
 			<table className="w-full border-collapse">
 				<thead>
 					<tr className="border-b border-border-DEFAULT">
@@ -134,6 +171,7 @@ export function CaseTable({ cases, onCaseClick }: CaseTableProps) {
 					))}
 				</tbody>
 			</table>
+			</div>
 		</div>
 	);
 }

@@ -15,6 +15,7 @@ import type { DigitalEvidence, DigitalSourceType } from "@/types";
 import { formatTimestamp } from "@/lib/utils";
 import { Badge } from "@/components/ui/Badge";
 import { ConfidenceBar } from "@/components/ui/ConfidenceBar";
+import { useToast } from "@/components/ui/Toast";
 
 interface DigitalPanelProps {
 	caseId: string;
@@ -95,6 +96,7 @@ function groupByDay(
 }
 
 export function DigitalPanel({ caseId, digitalEvidence, onRefresh }: DigitalPanelProps) {
+	const toast = useToast();
 	const [correlating, setCorrelating] = useState(false);
 	const [correlationError, setCorrelationError] = useState<string | null>(null);
 	const [correlationResult, setCorrelationResult] =
@@ -147,6 +149,7 @@ export function DigitalPanel({ caseId, digitalEvidence, onRefresh }: DigitalPane
 			const data = await res.json().catch(() => ({}));
 			if (!res.ok) throw new Error(data.error ?? `HTTP ${res.status}`);
 			setAddStatus(`Added ${data.inserted} record.`);
+			toast.success("Digital evidence record added.");
 			setForm({
 				sourceType: "CCTV",
 				sourceName: "",
@@ -159,7 +162,9 @@ export function DigitalPanel({ caseId, digitalEvidence, onRefresh }: DigitalPane
 			});
 			onRefresh?.();
 		} catch (err) {
-			setAddError(err instanceof Error ? err.message : "Unknown error");
+			const message = err instanceof Error ? err.message : "Unknown error";
+			setAddError(message);
+			toast.error(`Failed to add record: ${message}`);
 		} finally {
 			setAdding(false);
 		}
@@ -185,10 +190,13 @@ export function DigitalPanel({ caseId, digitalEvidence, onRefresh }: DigitalPane
 				`Inserted ${data.inserted} record(s)` +
 					(data.rejected?.length ? `, rejected ${data.rejected.length}.` : "."),
 			);
+			toast.success(`Imported ${data.inserted} digital evidence record(s).`);
 			setCsv("");
 			onRefresh?.();
 		} catch (err) {
-			setAddError(err instanceof Error ? err.message : "Unknown error");
+			const message = err instanceof Error ? err.message : "Unknown error";
+			setAddError(message);
+			toast.error(`CSV import failed: ${message}`);
 		} finally {
 			setAdding(false);
 		}
@@ -233,18 +241,21 @@ export function DigitalPanel({ caseId, digitalEvidence, onRefresh }: DigitalPane
 					`Extracted ${data.extracted}, inserted ${data.inserted}.` +
 						(data.summary ? ` ${data.summary}` : ""),
 				);
+				toast.success(`Extracted ${data.inserted} record(s) from image.`);
 				onRefresh?.();
 			} else {
-				setAddError(
-					data.summary
-						? `No events extracted. Reason: ${data.summary}`
-						: "No events could be extracted from this image.",
-				);
+				const message = data.summary
+					? `No events extracted. Reason: ${data.summary}`
+					: "No events could be extracted from this image.";
+				setAddError(message);
+				toast.error(message);
 			}
 			setImageFile(null);
 			setImageHint("");
 		} catch (err) {
-			setAddError(err instanceof Error ? err.message : "Unknown error");
+			const message = err instanceof Error ? err.message : "Unknown error";
+			setAddError(message);
+			toast.error(`Image extraction failed: ${message}`);
 		} finally {
 			setAdding(false);
 		}
@@ -277,8 +288,13 @@ export function DigitalPanel({ caseId, digitalEvidence, onRefresh }: DigitalPane
 			}
 			const data = (await res.json()) as CorrelationResult;
 			setCorrelationResult(data);
+			toast.success(
+				`Correlation complete — ${data.anomalies.length} anomal${data.anomalies.length === 1 ? "y" : "ies"} detected.`,
+			);
 		} catch (err) {
-			setCorrelationError(err instanceof Error ? err.message : "Unknown error");
+			const message = err instanceof Error ? err.message : "Unknown error";
+			setCorrelationError(message);
+			toast.error(`Correlation failed: ${message}`);
 		} finally {
 			setCorrelating(false);
 		}
@@ -751,7 +767,8 @@ export function DigitalPanel({ caseId, digitalEvidence, onRefresh }: DigitalPane
 									<div className="font-mono text-xs uppercase tracking-widest text-muted mb-2">
 										Anomalies Detected ({correlationResult.anomalies.length})
 									</div>
-									<table className="w-full border-collapse">
+									<div className="overflow-x-auto">
+									<table className="w-full border-collapse" style={{ minWidth: 560 }}>
 										<thead>
 											<tr className="border-b border-border-DEFAULT">
 												{[
@@ -812,6 +829,7 @@ export function DigitalPanel({ caseId, digitalEvidence, onRefresh }: DigitalPane
 											)}
 										</tbody>
 									</table>
+									</div>
 								</div>
 
 								{/* Patterns */}

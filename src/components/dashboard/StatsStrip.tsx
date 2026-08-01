@@ -62,21 +62,24 @@ export default function StatsStrip({ cases }: StatsStripProps) {
 	] as const;
 
 	return (
-		<div className="flex w-full border border-border-DEFAULT bg-surface-1">
+		<div className="grid grid-cols-2 sm:flex w-full border border-border-DEFAULT bg-surface-1">
 			{cells.map((cell, i) => (
 				<div
 					key={cell.label}
 					className={cn(
-						"flex flex-1 flex-col justify-center gap-1 px-6 py-4",
-						i < cells.length - 1 && "border-r border-border-DEFAULT",
+						"flex sm:flex-1 flex-col justify-center gap-1 px-4 sm:px-6 py-3 sm:py-4 border-border-DEFAULT",
+						i % 2 === 0 ? "border-r" : "",
+						i < cells.length - 2 && "border-b sm:border-b-0",
+						i === cells.length - 1 && "col-span-2 sm:col-span-1 border-r-0",
+						i < cells.length - 1 && "sm:border-r",
 					)}
 				>
-					<span className="font-mono text-xs uppercase tracking-wider text-dim">
+					<span className="font-mono text-[10px] sm:text-xs uppercase tracking-wider text-dim">
 						{cell.label}
 					</span>
 					<span
 						className={cn(
-							"font-mono text-2xl leading-none tabular-nums",
+							"font-mono text-xl sm:text-2xl leading-none tabular-nums",
 							cell.highlight ? "text-crimson" : "text-data",
 						)}
 					>

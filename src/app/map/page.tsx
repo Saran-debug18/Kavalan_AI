@@ -2,8 +2,6 @@
 
 import dynamic from "next/dynamic";
 import { useEffect, useRef, useState } from "react";
-import AppShell from "@/components/layout/AppShell";
-import Sidebar from "@/components/layout/Sidebar";
 import TopBar from "@/components/layout/TopBar";
 import type { GeoCase } from "@/components/map/IntelMap";
 
@@ -106,9 +104,9 @@ export default function MapPage() {
 	}, []);
 
 	return (
-		<AppShell sidebar={<Sidebar />}>
+		<>
 			<TopBar title="INTEL MAP" subtitle="GEOSPATIAL CASE OVERVIEW" />
-			<div className="p-6">
+			<div className="p-4 md:p-6">
 				<div className="flex items-center flex-wrap gap-3 mb-4">
 					<button
 						type="button"
@@ -213,6 +211,6 @@ export default function MapPage() {
 					<IntelMap cases={data.cases} />
 				) : null}
 			</div>
-		</AppShell>
+		</>
 	);
 }

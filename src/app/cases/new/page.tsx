@@ -3,8 +3,6 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import AppShell from "@/components/layout/AppShell";
-import Sidebar from "@/components/layout/Sidebar";
 import TopBar from "@/components/layout/TopBar";
 import { Button } from "@/components/ui/Button";
 import type { RiskLevel } from "@/types";
@@ -114,11 +112,11 @@ export default function NewCasePage() {
 	);
 
 	return (
-		<AppShell sidebar={<Sidebar />}>
+		<>
 			<TopBar title="NEW INVESTIGATION" subtitle="OPEN CASE FILE" />
 
 			<motion.div
-				className="p-6"
+				className="p-4 md:p-6"
 				initial={{ opacity: 0, y: 8 }}
 				animate={{ opacity: 1, y: 0 }}
 				transition={{ duration: 0.2, ease: "easeOut" }}
@@ -218,6 +216,6 @@ export default function NewCasePage() {
 					</form>
 				</div>
 			</motion.div>
-		</AppShell>
+		</>
 	);
 }

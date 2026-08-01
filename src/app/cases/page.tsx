@@ -3,12 +3,27 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import AppShell from "@/components/layout/AppShell";
-import Sidebar from "@/components/layout/Sidebar";
 import TopBar from "@/components/layout/TopBar";
 import CaseTable from "@/components/cases/CaseTable";
 import { Button } from "@/components/ui/Button";
+import { useToast } from "@/components/ui/Toast";
+import { CasesPageSkeleton } from "@/components/ui/Skeleton";
+import { downloadCsv } from "@/lib/export";
 import type { Case, CaseStatus, RiskLevel } from "@/types";
+
+const EXPORT_COLUMNS = [
+	"caseRef",
+	"title",
+	"status",
+	"riskLevel",
+	"riskScore",
+	"victimName",
+	"location",
+	"dateOfIncident",
+	"dateCreated",
+	"assignedAgent",
+	"evidenceCount",
+];
 
 const STATUS_FILTERS: Array<"ALL" | CaseStatus> = [
 	"ALL",
@@ -28,6 +43,7 @@ const RISK_FILTERS: Array<"ALL" | RiskLevel> = [
 
 export default function CasesPage() {
 	const router = useRouter();
+	const toast = useToast();
 	const [cases, setCases] = useState<Case[]>([]);
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState<string | null>(null);
@@ -56,12 +72,20 @@ export default function CasesPage() {
 		return matchStatus && matchRisk;
 	});
 
+	function handleExportCsv() {
+		const stamp = new Date().toISOString().slice(0, 10);
+		const filename = `kavalan-cases-${stamp}.csv`;
+		downloadCsv(filename, filtered as unknown as Record<string, unknown>[], EXPORT_COLUMNS);
+		toast.success(`Exported ${filtered.length} case${filtered.length === 1 ? "" : "s"} to ${filename}.`);
+	}
+
 	const filterBtnStyle = (active: boolean) => ({
 		background: active ? "var(--amber-bg)" : "transparent",
 		color: active ? "var(--amber)" : "var(--text-dim)",
 		border: `1px solid ${active ? "var(--amber-border)" : "var(--border)"}`,
-		padding: "2px 10px",
+		padding: "6px 12px",
 		borderRadius: "3px",
+		minHeight: "32px",
 		fontFamily: "var(--font-mono, monospace)",
 		fontSize: "11px",
 		cursor: "pointer",
@@ -71,48 +95,50 @@ export default function CasesPage() {
 
 	if (loading) {
 		return (
-			<AppShell sidebar={<Sidebar />}>
-				<div className="flex items-center justify-center h-64">
-					<span
-						className="font-mono text-sm"
-						style={{ color: "var(--text-dim)" }}
-					>
-						LOADING...
-					</span>
-				</div>
-			</AppShell>
+			<>
+				<TopBar title="ACTIVE CASES" subtitle="CASE REGISTRY" />
+				<CasesPageSkeleton />
+			</>
 		);
 	}
 
 	if (error) {
 		return (
-			<AppShell sidebar={<Sidebar />}>
-				<div className="flex items-center justify-center h-64">
-					<span
-						className="font-mono text-sm"
-						style={{ color: "var(--critical)" }}
-					>
-						ERROR: {error}
-					</span>
-				</div>
-			</AppShell>
+			<div className="flex items-center justify-center h-64">
+				<span
+					className="font-mono text-sm"
+					style={{ color: "var(--critical)" }}
+				>
+					ERROR: {error}
+				</span>
+			</div>
 		);
 	}
 
 	return (
-		<AppShell sidebar={<Sidebar />}>
+		<>
 			<TopBar
 				title="ACTIVE CASES"
 				subtitle="CASE REGISTRY"
 				actions={
-					<Button variant="primary" href="/cases/new">
-						NEW CASE
-					</Button>
+					<div className="flex items-center gap-2">
+						<Button
+							variant="secondary"
+							size="sm"
+							onClick={handleExportCsv}
+							className="hidden sm:inline-flex"
+						>
+							Export CSV
+						</Button>
+						<Button variant="primary" href="/cases/new">
+							NEW CASE
+						</Button>
+					</div>
 				}
 			/>
 
 			<motion.div
-				className="p-6"
+				className="p-4 md:p-6"
 				initial={{ opacity: 0, y: 8 }}
 				animate={{ opacity: 1, y: 0 }}
 				transition={{ duration: 0.2, ease: "easeOut" }}
@@ -177,6 +203,6 @@ export default function CasesPage() {
 					onCaseClick={(id) => router.push(`/cases/${id}`)}
 				/>
 			</motion.div>
-		</AppShell>
+		</>
 	);
 }

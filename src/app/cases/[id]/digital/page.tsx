@@ -61,7 +61,7 @@ export default function DigitalPage() {
 
 	return (
 		<motion.div
-			className="p-6"
+			className="p-4 md:p-6"
 			initial={{ opacity: 0, y: 8 }}
 			animate={{ opacity: 1, y: 0 }}
 			transition={{ duration: 0.2, ease: "easeOut" }}

@@ -3,9 +3,8 @@
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import Link from "next/link";
-import AppShell from "@/components/layout/AppShell";
-import Sidebar from "@/components/layout/Sidebar";
 import TopBar from "@/components/layout/TopBar";
+import { DashboardSkeleton } from "@/components/ui/Skeleton";
 import StatsStrip from "@/components/dashboard/StatsStrip";
 import RiskDistribution from "@/components/dashboard/RiskDistribution";
 import RecentActivity from "@/components/dashboard/RecentActivity";
@@ -49,36 +48,28 @@ export default function DashboardPage() {
 
 	if (loading) {
 		return (
-			<AppShell sidebar={<Sidebar />}>
-				<div className="flex items-center justify-center h-64">
-					<span
-						className="font-mono text-sm"
-						style={{ color: "var(--text-dim)" }}
-					>
-						LOADING...
-					</span>
-				</div>
-			</AppShell>
+			<>
+				<TopBar title="INVESTIGATION HUB" subtitle="KAVALAN FORENSIC INTELLIGENCE" />
+				<DashboardSkeleton />
+			</>
 		);
 	}
 
 	if (error) {
 		return (
-			<AppShell sidebar={<Sidebar />}>
-				<div className="flex items-center justify-center h-64">
-					<span
-						className="font-mono text-sm"
-						style={{ color: "var(--critical)" }}
-					>
-						ERROR: {error}
-					</span>
-				</div>
-			</AppShell>
+			<div className="flex items-center justify-center h-64">
+				<span
+					className="font-mono text-sm"
+					style={{ color: "var(--critical)" }}
+				>
+					ERROR: {error}
+				</span>
+			</div>
 		);
 	}
 
 	return (
-		<AppShell sidebar={<Sidebar />}>
+		<>
 			<TopBar
 				title="INVESTIGATION HUB"
 				subtitle="KAVALAN FORENSIC INTELLIGENCE"
@@ -90,7 +81,7 @@ export default function DashboardPage() {
 			/>
 
 			<motion.div
-				className="p-6"
+				className="p-4 md:p-6"
 				initial={{ opacity: 0, y: 8 }}
 				animate={{ opacity: 1, y: 0 }}
 				transition={{ duration: 0.2, ease: "easeOut" }}
@@ -99,21 +90,21 @@ export default function DashboardPage() {
 				<StatsStrip cases={cases} />
 
 				{/* Row 2: Risk Distribution + Case Pipeline */}
-				<div className="mt-6 grid grid-cols-3 gap-6">
-					<div className="col-span-1">
+				<div className="mt-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
+					<div className="lg:col-span-1">
 						<RiskDistribution cases={cases} />
 					</div>
-					<div className="col-span-2">
+					<div className="lg:col-span-2">
 						<CasePipeline cases={cases} />
 					</div>
 				</div>
 
 				{/* Row 3: Recent Activity + High-Risk Cases */}
-				<div className="mt-6 grid grid-cols-3 gap-6">
-					<div className="col-span-2">
+				<div className="mt-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
+					<div className="lg:col-span-2">
 						<RecentActivity activities={activities} cases={cases} />
 					</div>
-					<div className="col-span-1">
+					<div className="lg:col-span-1">
 						<h3
 							className="font-mono text-xs uppercase mb-3"
 							style={{ color: "var(--text-dim)", letterSpacing: "0.1em" }}
@@ -177,6 +168,6 @@ export default function DashboardPage() {
 					</div>
 				</div>
 			</motion.div>
-		</AppShell>
+		</>
 	);
 }

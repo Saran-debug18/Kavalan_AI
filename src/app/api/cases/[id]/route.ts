@@ -2,6 +2,7 @@ export const dynamic = "force-dynamic";
 import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { randomUUID } from "crypto";
+import { getSessionAgentName } from "@/lib/auth";
 
 export async function GET(
 	_request: NextRequest,
@@ -108,7 +109,7 @@ export async function PATCH(
 				type: "STATUS_CHANGED",
 				description: `Case status changed from ${prev.status ?? "?"} to ${body.status}.`,
 				createdAt: new Date().toISOString(),
-				agent: "Investigator",
+				agent: await getSessionAgentName(request),
 			});
 		}
 

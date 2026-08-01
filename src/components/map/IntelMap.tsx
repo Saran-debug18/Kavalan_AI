@@ -82,7 +82,7 @@ export default function IntelMap({ cases }: IntelMapProps) {
 	}, [cases]);
 
 	return (
-		<div style={{ height: "calc(100vh - 180px)", minHeight: 500 }}>
+		<div style={{ height: "calc(100vh - 180px)", minHeight: 360 }}>
 			<MapContainer
 				center={center}
 				zoom={zoom}

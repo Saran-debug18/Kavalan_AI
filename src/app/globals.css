@@ -52,6 +52,41 @@
 	--low: var(--sage);
 }
 
+/* ─── OKLCH Forensic Dark Theme ─────────────────────────────────────────── */
+[data-theme="dark"] {
+	/* Backgrounds */
+	--bg: oklch(16% 0.006 255);
+	--surface-1: oklch(20% 0.008 255);
+	--surface-2: oklch(25% 0.01 255);
+	--surface-3: oklch(30% 0.012 255);
+
+	/* Borders */
+	--border: oklch(32% 0.012 255);
+	--border-strong: oklch(44% 0.016 255);
+
+	/* Amber — primary accent (brightened so it reads on dark bg) */
+	--amber: oklch(76% 0.16 62);
+	--amber-dim: oklch(66% 0.14 62);
+	--amber-bg: oklch(28% 0.05 65);
+
+	/* Crimson — CRITICAL risk */
+	--crimson: oklch(68% 0.19 25);
+	--crimson-bg: oklch(27% 0.06 25);
+
+	/* Sage — LOW / resolved */
+	--sage: oklch(70% 0.13 162);
+	--sage-bg: oklch(25% 0.04 162);
+
+	/* Sky — MEDIUM / info */
+	--sky: oklch(72% 0.13 234);
+	--sky-bg: oklch(27% 0.05 234);
+
+	/* Text */
+	--data: oklch(94% 0.005 255);
+	--muted: oklch(68% 0.008 255);
+	--dim: oklch(52% 0.008 255);
+}
+
 /* ─── Base Reset ─────────────────────────────────────────────────────────── */
 @layer base {
 	*,
