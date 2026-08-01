@@ -8,6 +8,7 @@ import {
 	SEED_DIGITAL_EVIDENCE,
 	SEED_ACTIVITIES,
 } from "./seed-data";
+import { hashPassword } from "./auth";
 
 const DB_PATH = path.join(process.cwd(), "data", "kavalan.db");
 
@@ -116,6 +117,14 @@ export function initDb(): void {
       agent TEXT NOT NULL
     );
 
+    CREATE TABLE IF NOT EXISTS analysts (
+      id TEXT PRIMARY KEY,
+      username TEXT NOT NULL UNIQUE,
+      name TEXT NOT NULL,
+      passwordHash TEXT NOT NULL,
+      createdAt TEXT NOT NULL
+    );
+
     CREATE TABLE IF NOT EXISTS ai_calls (
       id TEXT PRIMARY KEY,
       createdAt TEXT NOT NULL,
@@ -176,6 +185,35 @@ export function initDb(): void {
 	};
 	if (row.count === 0) {
 		seedIfEmpty();
+	}
+
+	const analystRow = db
+		.prepare("SELECT COUNT(*) as count FROM analysts")
+		.get() as { count: number };
+	if (analystRow.count === 0) {
+		seedAnalysts();
+	}
+}
+
+const DEMO_ANALYSTS = [
+	{ username: "investigator", name: "Det. A. Ramirez", password: "kavalan2026" },
+	{ username: "admin", name: "System Administrator", password: "admin2026" },
+];
+
+function seedAnalysts(): void {
+	const insert = db.prepare(`
+    INSERT OR IGNORE INTO analysts (id, username, name, passwordHash, createdAt)
+    VALUES (@id, @username, @name, @passwordHash, @createdAt)
+  `);
+	const now = new Date().toISOString();
+	for (const a of DEMO_ANALYSTS) {
+		insert.run({
+			id: `analyst-${a.username}`,
+			username: a.username,
+			name: a.name,
+			passwordHash: hashPassword(a.password),
+			createdAt: now,
+		});
 	}
 }
 
