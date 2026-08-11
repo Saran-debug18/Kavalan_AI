@@ -2,6 +2,7 @@ export const dynamic = "force-dynamic";
 import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { analyzeAutopsyReport } from "@/lib/ai-engine";
+import { triggerTimelineRegeneration } from "@/lib/timeline-service";
 import { randomUUID } from "crypto";
 
 export async function POST(request: NextRequest) {
@@ -105,6 +106,8 @@ export async function POST(request: NextRequest) {
 			createdAt: analyzedAt,
 			agent: "KAVALAN AI Engine",
 		});
+
+		triggerTimelineRegeneration(caseId);
 
 		return NextResponse.json({ id, caseId, analyzedAt, ...result });
 	} catch (error) {

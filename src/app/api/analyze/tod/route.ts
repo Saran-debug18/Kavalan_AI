@@ -3,6 +3,7 @@ import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { estimateTod } from "@/lib/ai-engine";
 import type { TodInput } from "@/lib/ai-engine";
+import { triggerTimelineRegeneration } from "@/lib/timeline-service";
 import { randomUUID } from "crypto";
 
 export async function POST(request: NextRequest) {
@@ -94,6 +95,8 @@ export async function POST(request: NextRequest) {
 			createdAt: estimatedAt,
 			agent: "KAVALAN AI Engine",
 		});
+
+		triggerTimelineRegeneration(caseId);
 
 		return NextResponse.json({ id, caseId, estimatedAt, ...result });
 	} catch (error) {

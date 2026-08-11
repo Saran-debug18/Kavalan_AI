@@ -1157,6 +1157,316 @@ export function estimateTod(input: TodInput): TodResult {
 	};
 }
 
+// ─── reconstructTimeline — narrative event reconstruction ────────────────────
+
+export interface TimelineReconstructionInput {
+	caseTitle: string;
+	caseDescription: string;
+	dateOfIncident: string;
+	victimName: string;
+	location: string;
+	autopsy?: {
+		causeOfDeath: string;
+		mannerOfDeath: string;
+		postmortemInterval: string;
+		injuryPattern: string;
+		analyzedAt: string;
+	};
+	tod?: {
+		estimatedTodEarliest: string;
+		estimatedTodLatest: string;
+		centralEstimate?: string;
+		methodology: string;
+	};
+	digitalEvents: Array<{
+		sourceType: string;
+		sourceName?: string;
+		timestamp: string;
+		location: string;
+		subject: string;
+		description: string;
+		anomalyScore?: number;
+	}>;
+	physicalEvidence: Array<{
+		catalogRef: string;
+		type: string;
+		description: string;
+		collectedAt: string;
+		location: string;
+		analyst: string;
+	}>;
+	priorReviews?: {
+		confirmed: string[];
+		rejected: string[];
+	};
+}
+
+export interface TimelineReconstructionEvent {
+	time: string;
+	title: string;
+	description: string;
+	confidence: number;
+	sourceType: "DIGITAL" | "AUTOPSY" | "TOD" | "EVIDENCE" | "INFERRED";
+	evidenceRef?: string;
+}
+
+export interface TimelineReconstructionResult {
+	summary: string;
+	events: TimelineReconstructionEvent[];
+	inconsistencies: Array<{ description: string; severity: string }>;
+	confidence: number;
+}
+
+export async function reconstructTimeline(
+	input: TimelineReconstructionInput,
+): Promise<TimelineReconstructionResult> {
+	const sortedDigital = [...input.digitalEvents].sort(
+		(a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime(),
+	);
+	const sortedEvidence = [...input.physicalEvidence].sort(
+		(a, b) => new Date(a.collectedAt).getTime() - new Date(b.collectedAt).getTime(),
+	);
+
+	if (
+		sortedDigital.length === 0 &&
+		sortedEvidence.length === 0 &&
+		!input.autopsy &&
+		!input.tod
+	) {
+		return {
+			summary:
+				"Insufficient evidence to reconstruct a timeline. Add catalogued evidence, digital evidence, an autopsy analysis, or a time-of-death estimate to generate an event reconstruction.",
+			events: [],
+			inconsistencies: [],
+			confidence: 0,
+		};
+	}
+
+	const systemPrompt = `You are a forensic timeline reconstruction analyst for the KAVALAN investigative system.
+Given case details, autopsy findings, a time-of-death estimate, catalogued physical/biological/
+forensic evidence, and digital evidence records, synthesize the most probable chronological
+sequence of events. Combine confirmed evidence with reasonable forensic inference, clearly
+distinguishing the two. Flag any evidence that contradicts other evidence (e.g. a digital
+record placing the subject somewhere the TOD window rules out). Note that catalogued evidence
+timestamps (collectedAt) reflect when it was recovered/logged, not necessarily when the
+underlying event occurred — use the item's description to judge where it belongs in the
+actual event sequence, not just its collection time. Be precise and evidence-based — do not
+invent specific facts not supported by the input, but you may infer plausible connective
+events (e.g. "subject likely traveled between location A and B in this gap") and mark them
+as inferred with lower confidence. Respond with valid JSON only — no markdown, no explanation
+outside the JSON.`;
+
+	const digitalText = sortedDigital.length
+		? sortedDigital
+				.map(
+					(e, i) =>
+						`[${i + 1}] ${e.timestamp} | ${e.sourceType}${e.sourceName ? ` (${e.sourceName})` : ""} | Subject: ${e.subject} | Location: ${e.location}\n    ${e.description}${e.anomalyScore ? ` [anomaly score: ${e.anomalyScore}]` : ""}`,
+				)
+				.join("\n")
+		: "No digital evidence on file.";
+
+	const evidenceText = sortedEvidence.length
+		? sortedEvidence
+				.map(
+					(e, i) =>
+						`[${i + 1}] ${e.catalogRef} | ${e.type} | Collected: ${e.collectedAt} | Location: ${e.location} | Analyst: ${e.analyst}\n    ${e.description}`,
+				)
+				.join("\n")
+		: "No catalogued physical/biological/forensic evidence on file.";
+
+	const userMessage = `Reconstruct the probable event timeline for this case and return a JSON object with exactly these fields:
+
+- summary: string (3-5 sentence narrative of what most likely happened, in chronological order)
+- events: array of objects, sorted chronologically, each with:
+  - time: string (ISO timestamp if known precisely, otherwise a descriptive estimate like "approx. 21:30" or a range)
+  - title: string (short label, e.g. "Subject enters premises")
+  - description: string (1-2 sentence detail)
+  - confidence: integer 0-100 (100 = directly evidenced, lower = inferred)
+  - sourceType: one of "DIGITAL" | "AUTOPSY" | "TOD" | "EVIDENCE" | "INFERRED" (EVIDENCE = catalogued physical/biological/forensic evidence; INFERRED = a gap-filling event not directly evidenced by any single record)
+  - evidenceRef: string or null (which piece of evidence supports this, if any — e.g. "CCTV — Main Gate Cam", "Autopsy PMI window", or a catalog ref like "EVD-0084-002")
+- inconsistencies: array of objects with:
+  - description: string (what contradicts what, and why it matters)
+  - severity: "LOW" | "MEDIUM" | "HIGH"
+- confidence: integer 0-100 (overall confidence in this reconstruction given evidence completeness)
+
+CASE: ${input.caseTitle}
+Victim: ${input.victimName}
+Location: ${input.location}
+Date of incident: ${input.dateOfIncident}
+Description: ${input.caseDescription}
+
+${
+	input.priorReviews &&
+	(input.priorReviews.confirmed.length > 0 || input.priorReviews.rejected.length > 0)
+		? `INVESTIGATOR REVIEW OF A PRIOR RECONSTRUCTION (treat as ground truth):
+Confirmed accurate — keep these or clearly equivalent events, do not contradict them:
+${input.priorReviews.confirmed.length ? input.priorReviews.confirmed.map((e) => `- ${e}`).join("\n") : "(none)"}
+Rejected as inaccurate — do not reintroduce these unless new evidence now supports them:
+${input.priorReviews.rejected.length ? input.priorReviews.rejected.map((e) => `- ${e}`).join("\n") : "(none)"}
+`
+		: ""
+}
+
+${
+	input.autopsy
+		? `AUTOPSY FINDINGS:
+Cause of death: ${input.autopsy.causeOfDeath}
+Manner of death: ${input.autopsy.mannerOfDeath}
+Postmortem interval: ${input.autopsy.postmortemInterval}
+Injury pattern: ${input.autopsy.injuryPattern}
+Analyzed at: ${input.autopsy.analyzedAt}`
+		: "AUTOPSY: not yet on file."
+}
+
+${
+	input.tod
+		? `TIME OF DEATH ESTIMATE:
+Window: ${input.tod.estimatedTodEarliest} to ${input.tod.estimatedTodLatest}
+Central estimate: ${input.tod.centralEstimate ?? "n/a"}
+Methodology: ${input.tod.methodology}`
+		: "TIME OF DEATH: not yet estimated."
+}
+
+CATALOGUED EVIDENCE (physical/biological/forensic/testimonial, by collection time):
+${evidenceText}
+
+DIGITAL EVIDENCE (chronological):
+${digitalText}
+
+Respond with JSON only.`;
+
+	try {
+		const raw = await callClaude(
+			systemPrompt,
+			userMessage,
+			2048,
+			"timeline_reconstruction",
+		);
+		const cleaned = raw
+			.replace(/^```(?:json)?\n?/i, "")
+			.replace(/\n?```$/i, "")
+			.trim();
+		const parsed = JSON.parse(cleaned);
+
+		const events: TimelineReconstructionEvent[] = Array.isArray(parsed.events)
+			? parsed.events.map((e: Record<string, unknown>) => ({
+					time: String(e.time ?? ""),
+					title: String(e.title ?? ""),
+					description: String(e.description ?? ""),
+					confidence:
+						typeof e.confidence === "number"
+							? Math.max(0, Math.min(100, e.confidence))
+							: 50,
+					sourceType: (["DIGITAL", "AUTOPSY", "TOD", "EVIDENCE", "INFERRED"].includes(
+						String(e.sourceType),
+					)
+						? e.sourceType
+						: "INFERRED") as TimelineReconstructionEvent["sourceType"],
+					evidenceRef: e.evidenceRef ? String(e.evidenceRef) : undefined,
+				}))
+			: [];
+
+		return {
+			summary: parsed.summary ?? "",
+			events,
+			inconsistencies: Array.isArray(parsed.inconsistencies)
+				? parsed.inconsistencies
+				: [],
+			confidence:
+				typeof parsed.confidence === "number"
+					? Math.max(0, Math.min(100, parsed.confidence))
+					: 50,
+		};
+	} catch (err) {
+		console.error("LLM timeline reconstruction failed, using fallback:", err);
+		return reconstructTimelineFallback(input, sortedDigital, sortedEvidence);
+	}
+}
+
+// ─── reconstructTimeline fallback (deterministic, evidence-only) ─────────────
+
+function reconstructTimelineFallback(
+	input: TimelineReconstructionInput,
+	sortedDigital: TimelineReconstructionInput["digitalEvents"],
+	sortedEvidence: TimelineReconstructionInput["physicalEvidence"],
+): TimelineReconstructionResult {
+	const events: TimelineReconstructionEvent[] = [];
+
+	for (const e of sortedDigital) {
+		events.push({
+			time: e.timestamp,
+			title: `${e.sourceType}${e.sourceName ? ` — ${e.sourceName}` : ""}`,
+			description: e.description,
+			confidence: e.anomalyScore && e.anomalyScore > 70 ? 60 : 80,
+			sourceType: "DIGITAL",
+			evidenceRef: `${e.sourceType} — ${e.subject}`,
+		});
+	}
+
+	for (const e of sortedEvidence) {
+		events.push({
+			time: e.collectedAt,
+			title: `${e.type} evidence catalogued: ${e.catalogRef}`,
+			description: e.description,
+			confidence: 55,
+			sourceType: "EVIDENCE",
+			evidenceRef: e.catalogRef,
+		});
+	}
+
+	if (input.tod) {
+		events.push({
+			time: input.tod.centralEstimate ?? input.tod.estimatedTodEarliest,
+			title: "Estimated time of death",
+			description: `Henssge-based estimate places time of death between ${input.tod.estimatedTodEarliest} and ${input.tod.estimatedTodLatest}.`,
+			confidence: 65,
+			sourceType: "TOD",
+			evidenceRef: "TOD estimate",
+		});
+	}
+
+	if (input.autopsy) {
+		events.push({
+			time: input.autopsy.analyzedAt,
+			title: `Cause of death: ${input.autopsy.causeOfDeath}`,
+			description: input.autopsy.injuryPattern || input.autopsy.mannerOfDeath,
+			confidence: 70,
+			sourceType: "AUTOPSY",
+			evidenceRef: "Autopsy report",
+		});
+	}
+
+	events.sort((a, b) => {
+		const ta = new Date(a.time).getTime();
+		const tb = new Date(b.time).getTime();
+		if (Number.isNaN(ta) || Number.isNaN(tb)) return 0;
+		return ta - tb;
+	});
+
+	const inconsistencies: Array<{ description: string; severity: string }> = [];
+	if (input.tod && sortedDigital.length > 0) {
+		const todEarliest = new Date(input.tod.estimatedTodEarliest).getTime();
+		const todLatest = new Date(input.tod.estimatedTodLatest).getTime();
+		const afterDeath = sortedDigital.filter((e) => {
+			const t = new Date(e.timestamp).getTime();
+			return Number.isFinite(t) && t > todLatest;
+		});
+		if (afterDeath.length > 0) {
+			inconsistencies.push({
+				description: `${afterDeath.length} digital record(s) timestamped after the estimated TOD window — verify device/account activity wasn't automated or accessed by a third party.`,
+				severity: "MEDIUM",
+			});
+		}
+	}
+
+	return {
+		summary: `Deterministic reconstruction from ${sortedDigital.length} digital record(s)${input.autopsy ? ", autopsy findings," : ""}${input.tod ? " and a TOD estimate" : ""}. This is a fallback ordering by timestamp — AI narrative synthesis was unavailable.`,
+		events,
+		inconsistencies,
+		confidence: events.length > 0 ? 40 : 0,
+	};
+}
+
 // ─── calculateRiskScore — deterministic formula ───────────────────────────────
 
 export function calculateRiskScore(input: RiskScoreInput): RiskScoreResult {

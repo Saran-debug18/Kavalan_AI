@@ -39,6 +39,16 @@ export async function GET(
 				"SELECT * FROM tod_estimates WHERE caseId = ? ORDER BY estimatedAt DESC",
 			)
 			.all(id);
+		const timelineReconstructionsRaw = db
+			.prepare(
+				"SELECT * FROM timeline_reconstructions WHERE caseId = ? ORDER BY generatedAt DESC",
+			)
+			.all(id) as Array<Record<string, unknown>>;
+		const timelineReconstructions = timelineReconstructionsRaw.map((row) => ({
+			...row,
+			events: JSON.parse((row.events as string) ?? "[]"),
+			inconsistencies: JSON.parse((row.inconsistencies as string) ?? "[]"),
+		}));
 
 		return NextResponse.json({
 			...caseRow,
@@ -47,6 +57,7 @@ export async function GET(
 			autopsyReports,
 			digitalEvidence,
 			todEstimates,
+			timelineReconstructions,
 		});
 	} catch (error) {
 		return NextResponse.json({ error: String(error) }, { status: 500 });

@@ -2,6 +2,7 @@ export const dynamic = "force-dynamic";
 import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { callClaudeVision } from "@/lib/ai-engine";
+import { triggerTimelineRegeneration } from "@/lib/timeline-service";
 import { randomUUID } from "crypto";
 import type { DigitalEvidence, DigitalSourceType } from "@/types";
 
@@ -227,6 +228,8 @@ Respond with JSON only.`;
 			});
 		});
 		tx();
+
+		triggerTimelineRegeneration(id);
 
 		return NextResponse.json(
 			{

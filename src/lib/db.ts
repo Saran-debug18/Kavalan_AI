@@ -117,6 +117,28 @@ export function initDb(): void {
       agent TEXT NOT NULL
     );
 
+    CREATE TABLE IF NOT EXISTS timeline_event_reviews (
+      id TEXT PRIMARY KEY,
+      caseId TEXT NOT NULL,
+      eventKey TEXT NOT NULL,
+      eventTitle TEXT NOT NULL DEFAULT '',
+      eventDescription TEXT NOT NULL DEFAULT '',
+      status TEXT NOT NULL,
+      reviewedBy TEXT NOT NULL,
+      reviewedAt TEXT NOT NULL,
+      UNIQUE(caseId, eventKey)
+    );
+
+    CREATE TABLE IF NOT EXISTS timeline_reconstructions (
+      id TEXT PRIMARY KEY,
+      caseId TEXT NOT NULL,
+      generatedAt TEXT NOT NULL,
+      summary TEXT NOT NULL DEFAULT '',
+      events TEXT NOT NULL DEFAULT '[]',
+      inconsistencies TEXT NOT NULL DEFAULT '[]',
+      confidence REAL NOT NULL DEFAULT 0
+    );
+
     CREATE TABLE IF NOT EXISTS analysts (
       id TEXT PRIMARY KEY,
       username TEXT NOT NULL UNIQUE,

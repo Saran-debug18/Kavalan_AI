@@ -96,6 +96,32 @@ export interface DigitalEvidence {
 	tags: string; // JSON array string
 }
 
+export interface TimelineEvent {
+	time: string; // ISO timestamp, or a descriptive range if exact time is unknown
+	title: string;
+	description: string;
+	confidence: number; // 0-100
+	sourceType: "DIGITAL" | "AUTOPSY" | "TOD" | "EVIDENCE" | "INFERRED";
+	evidenceRef?: string;
+	key?: string; // stable-ish fingerprint used for investigator review persistence
+	status?: "pending" | "confirmed" | "rejected";
+}
+
+export interface TimelineInconsistency {
+	description: string;
+	severity: "LOW" | "MEDIUM" | "HIGH";
+}
+
+export interface TimelineReconstruction {
+	id: string;
+	caseId: string;
+	generatedAt: string;
+	summary: string;
+	events: TimelineEvent[];
+	inconsistencies: TimelineInconsistency[];
+	confidence: number;
+}
+
 export interface CaseActivity {
 	id: string;
 	caseId: string;
@@ -118,11 +144,26 @@ export interface RiskSummary {
 	recommendations: string[];
 }
 
-export interface CorrelationNode {
-	id: string;
+export type GraphNodeType = "VICTIM" | "SUBJECT" | "LOCATION" | "DEVICE";
+
+export interface GraphNode {
+	id: string; // stable derived key, e.g. "subject:john-doe"
 	label: string;
-	type: "SUSPECT" | "VICTIM" | "LOCATION" | "DEVICE" | "VEHICLE";
-	timestamp?: string;
-	connections: string[];
+	type: GraphNodeType;
+	anomalyScore?: number; // 0-100, drives size/color for SUBJECT/DEVICE
+	connectionCount: number; // computed post-edge-build
+	sourceRefs: string[]; // underlying evidence/digitalEvidence ids, for tooltip drill-down
+}
+
+export interface GraphEdge {
+	id: string; // `${source}--${target}--${kind}`
+	source: string;
+	target: string;
+	kind: "SAME_SUBJECT" | "CO_LOCATION" | "TIME_PROXIMITY" | "CASE_LINK";
 	weight: number;
+}
+
+export interface CaseGraph {
+	nodes: GraphNode[];
+	edges: GraphEdge[];
 }

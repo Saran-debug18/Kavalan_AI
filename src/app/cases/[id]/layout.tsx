@@ -7,15 +7,23 @@ import TopBar from "@/components/layout/TopBar";
 import { CaseWorkspaceSkeleton } from "@/components/ui/Skeleton";
 import { RiskBadge } from "@/components/ui/RiskBadge";
 import { CaseStatusControl } from "@/components/cases/CaseStatusControl";
-import type { Case } from "@/types";
+import { useToast } from "@/components/ui/Toast";
+import type { Case, TimelineReconstruction } from "@/types";
 
 const TABS = [
 	{ label: "OVERVIEW", path: "" },
 	{ label: "AUTOPSY", path: "/autopsy" },
 	{ label: "TIME OF DEATH", path: "/tod" },
 	{ label: "DIGITAL EVIDENCE", path: "/digital" },
+	{ label: "RELATIONSHIP MAP", path: "/graph" },
 	{ label: "TIMELINE", path: "/timeline" },
 ];
+
+const SEEN_KEY_PREFIX = "kavalan-seen-tl-";
+
+interface CaseWithTimeline extends Case {
+	timelineReconstructions?: TimelineReconstruction[];
+}
 
 export default function CaseWorkspaceLayout({
 	children,
@@ -25,8 +33,9 @@ export default function CaseWorkspaceLayout({
 	const params = useParams<{ id: string }>();
 	const pathname = usePathname();
 	const id = params?.id;
+	const toast = useToast();
 
-	const [caseData, setCaseData] = useState<Case | null>(null);
+	const [caseData, setCaseData] = useState<CaseWithTimeline | null>(null);
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState<string | null>(null);
 
@@ -36,8 +45,33 @@ export default function CaseWorkspaceLayout({
 			try {
 				const res = await fetch(`/api/cases/${id}`);
 				if (!res.ok) throw new Error("Case not found");
-				const data = await res.json();
-				setCaseData(data.case ?? data);
+				const data: CaseWithTimeline = await res.json();
+				setCaseData(data);
+
+				// Proactive alert: surface newly-generated HIGH-severity
+				// inconsistencies the moment an investigator lands on any tab of
+				// this case, not just when they happen to open Timeline. Only
+				// fires once per reconstruction id (tracked in localStorage) so
+				// it doesn't repeat on every navigation.
+				const latest = data.timelineReconstructions?.[0];
+				if (latest) {
+					const highSeverity = latest.inconsistencies.filter(
+						(i) => i.severity === "HIGH",
+					);
+					const seenKey = `${SEEN_KEY_PREFIX}${id}`;
+					const lastSeenId =
+						typeof window !== "undefined"
+							? window.localStorage.getItem(seenKey)
+							: null;
+					if (highSeverity.length > 0 && latest.id !== lastSeenId) {
+						toast.error(
+							`${highSeverity.length} HIGH-severity timeline inconsistenc${highSeverity.length === 1 ? "y" : "ies"} flagged: ${highSeverity[0].description}`,
+						);
+					}
+					if (typeof window !== "undefined") {
+						window.localStorage.setItem(seenKey, latest.id);
+					}
+				}
 			} catch (err) {
 				setError(err instanceof Error ? err.message : "Unknown error");
 			} finally {
@@ -45,7 +79,14 @@ export default function CaseWorkspaceLayout({
 			}
 		};
 		load();
+		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [id]);
+
+	const latestReconstruction = caseData?.timelineReconstructions?.[0];
+	const hasHighSeverity =
+		(latestReconstruction?.inconsistencies ?? []).some(
+			(i) => i.severity === "HIGH",
+		) ?? false;
 
 	if (loading) {
 		return <CaseWorkspaceSkeleton />;
@@ -102,7 +143,9 @@ export default function CaseWorkspaceLayout({
 								key={tab.label}
 								href={href}
 								style={{
-									display: "inline-block",
+									display: "inline-flex",
+									alignItems: "center",
+									gap: "6px",
 									padding: "10px 12px",
 									fontFamily: "var(--font-mono, monospace)",
 									fontSize: "11px",
@@ -118,6 +161,18 @@ export default function CaseWorkspaceLayout({
 								}}
 							>
 								{tab.label}
+								{tab.path === "/timeline" && hasHighSeverity && (
+									<span
+										title="HIGH-severity inconsistency flagged"
+										style={{
+											width: 6,
+											height: 6,
+											borderRadius: "50%",
+											background: "var(--crimson)",
+											display: "inline-block",
+										}}
+									/>
+								)}
 							</Link>
 						);
 					})}

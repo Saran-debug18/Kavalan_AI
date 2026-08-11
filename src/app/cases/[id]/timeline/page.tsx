@@ -5,17 +5,20 @@ import { useParams } from "next/navigation";
 import { motion } from "framer-motion";
 import { format } from "date-fns";
 import { TimelineRail } from "@/components/timeline/TimelineRail";
+import { TimelineReconstruction } from "@/components/timeline/TimelineReconstruction";
 import type {
 	Case,
 	DigitalEvidence,
 	AutopsyReport,
 	TodEstimate,
+	TimelineReconstruction as TimelineReconstructionData,
 } from "@/types";
 
 interface CaseDetail extends Case {
 	digitalEvidence: DigitalEvidence[];
-	autopsyReport?: AutopsyReport;
-	todEstimate?: TodEstimate;
+	autopsyReports?: AutopsyReport[];
+	todEstimates?: TodEstimate[];
+	timelineReconstructions?: TimelineReconstructionData[];
 }
 
 export default function TimelinePage() {
@@ -85,38 +88,46 @@ export default function TimelinePage() {
 				? format(new Date(timestamps[0]), "dd MMM yyyy")
 				: "NO DATE RANGE";
 
+	const latestAutopsy = caseData.autopsyReports?.[0];
+	const latestTod = caseData.todEstimates?.[0];
+	const latestReconstruction = caseData.timelineReconstructions?.[0];
+
 	return (
 		<motion.div
-			className="p-4 md:p-6"
+			className="p-4 md:p-6 flex flex-col gap-6"
 			initial={{ opacity: 0, y: 8 }}
 			animate={{ opacity: 1, y: 0 }}
 			transition={{ duration: 0.2, ease: "easeOut" }}
 		>
-			{/* Header */}
-			<div className="flex items-baseline gap-4 mb-6">
-				<h2
-					className="font-mono text-sm uppercase"
-					style={{
-						color: "var(--text-data)",
-						letterSpacing: "0.12em",
-					}}
-				>
-					EVIDENCE TIMELINE
-				</h2>
-				<span
-					className="font-mono text-xs"
-					style={{ color: "var(--amber-dim)" }}
-				>
-					{dateRange}
-				</span>
-			</div>
+			<TimelineReconstruction caseId={id} existing={latestReconstruction} />
 
-			<TimelineRail
-				digitalEvidence={digital}
-				autopsyReport={caseData.autopsyReport}
-				todEstimate={caseData.todEstimate}
-				caseId={id}
-			/>
+			{/* Raw evidence rail — supporting reference for the reconstruction above */}
+			<div>
+				<div className="flex items-baseline gap-4 mb-3">
+					<h2
+						className="font-mono text-sm uppercase"
+						style={{
+							color: "var(--text-data)",
+							letterSpacing: "0.12em",
+						}}
+					>
+						RAW EVIDENCE TIMELINE
+					</h2>
+					<span
+						className="font-mono text-xs"
+						style={{ color: "var(--amber-dim)" }}
+					>
+						{dateRange}
+					</span>
+				</div>
+
+				<TimelineRail
+					digitalEvidence={digital}
+					autopsyReport={latestAutopsy}
+					todEstimate={latestTod}
+					caseId={id}
+				/>
+			</div>
 		</motion.div>
 	);
 }

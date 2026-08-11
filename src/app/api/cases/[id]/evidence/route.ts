@@ -3,6 +3,7 @@ import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { randomUUID } from "crypto";
 import { getSessionAgentName } from "@/lib/auth";
+import { triggerTimelineRegeneration } from "@/lib/timeline-service";
 import fs from "fs";
 import path from "path";
 import type { EvidenceType } from "@/types";
@@ -179,6 +180,9 @@ export async function POST(
 		});
 
 		const row = db.prepare("SELECT * FROM evidence WHERE id = ?").get(id);
+
+		triggerTimelineRegeneration(caseId);
+
 		return NextResponse.json(row, { status: 201 });
 	} catch (error) {
 		return NextResponse.json({ error: String(error) }, { status: 500 });

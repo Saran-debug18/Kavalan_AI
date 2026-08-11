@@ -3,6 +3,7 @@ import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { randomUUID } from "crypto";
 import { getSessionAgentName } from "@/lib/auth";
+import { triggerTimelineRegeneration } from "@/lib/timeline-service";
 import type { DigitalEvidence, DigitalSourceType } from "@/types";
 
 const VALID_SOURCES: DigitalSourceType[] = [
@@ -218,6 +219,8 @@ export async function POST(
 			});
 		});
 		tx();
+
+		triggerTimelineRegeneration(id);
 
 		return NextResponse.json(
 			{

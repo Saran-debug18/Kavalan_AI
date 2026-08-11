@@ -1,7 +1,19 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { verifySessionToken, SESSION_COOKIE } from "@/lib/auth";
 
-const PUBLIC_PATHS = ["/login"];
+const PUBLIC_PATHS = [
+	"/login",
+	// PWA assets — must be fetchable without a session, both because the OS
+	// checks installability (manifest + icons) before any login happens, and
+	// because a service worker's own script request is always unauthenticated.
+	"/manifest.json",
+	"/sw.js",
+	"/icon.svg",
+	"/icon-192.png",
+	"/icon-512.png",
+	"/icon-maskable-512.png",
+	"/apple-touch-icon.png",
+];
 const PUBLIC_API_PREFIXES = ["/api/auth/"];
 
 export async function middleware(request: NextRequest) {

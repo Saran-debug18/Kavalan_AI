@@ -1,6 +1,7 @@
 export const dynamic = "force-dynamic";
 import { type NextRequest, NextResponse } from "next/server";
 import { callClaudeVision } from "@/lib/ai-engine";
+import { isLocalOcrAvailable, transcribeImageLocally } from "@/lib/ocr-local";
 
 const MAX_BYTES = 8 * 1024 * 1024; // 8 MB
 const ALLOWED = new Set(["image/png", "image/jpeg", "image/webp", "image/gif"]);
@@ -30,7 +31,32 @@ export async function POST(request: NextRequest) {
 			);
 
 		const bytes = new Uint8Array(await file.arrayBuffer());
-		const base64 = Buffer.from(bytes).toString("base64");
+		const buffer = Buffer.from(bytes);
+
+		// Try the locally fine-tuned TrOCR model first (no external API call, no
+		// cost). It was trained on isolated handwritten words, so it may not
+		// handle full multi-line report pages well — fall back to the Groq vision
+		// call if it's unavailable or produces nothing usable.
+		if (isLocalOcrAvailable()) {
+			try {
+				const localText = await transcribeImageLocally(buffer, file.type);
+				if (localText && localText.length > 0) {
+					return NextResponse.json({
+						text: localText,
+						bytes: file.size,
+						mimeType: file.type,
+						source: "local-trocr",
+					});
+				}
+			} catch (err) {
+				console.warn(
+					"Local OCR failed, falling back to Groq vision:",
+					(err as Error).message,
+				);
+			}
+		}
+
+		const base64 = buffer.toString("base64");
 
 		const systemPrompt = `You are a forensic document transcription assistant.
 You receive photographs or scans of autopsy report pages and transcribe the content
@@ -72,6 +98,7 @@ Output the transcription as plain text only.`;
 			text: cleaned,
 			bytes: file.size,
 			mimeType: file.type,
+			source: "groq",
 		});
 	} catch (error) {
 		return NextResponse.json({ error: String(error) }, { status: 500 });

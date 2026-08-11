@@ -3,10 +3,22 @@
 This folder holds training assets for two models that will eventually replace/augment
 the Groq vision API calls in the app with locally-run models:
 
-| Track | Goal | Replaces | Dataset |
-|---|---|---|---|
-| **OCR** | Fine-tune TrOCR on handwritten/scanned text | `src/app/api/analyze/autopsy/extract-image/route.ts` (autopsy report transcription) | [Handwritten OCR image data in English](https://www.kaggle.com/datasets/appenlimited/handwritten-ocr-image-data-in-english) |
-| **Detection** | Fine-tune YOLOv8 to detect guns/knives in evidence photos | New capability — structured detections instead of free-text extraction in `src/app/api/cases/[id]/digital/extract-image/route.ts` | [Guns-Knives Object Detection](https://www.kaggle.com/datasets/iqmansingh/guns-knives-object-detection) |
+| Track | Goal | Replaces | Dataset | Status |
+|---|---|---|---|---|
+| **OCR** | Fine-tune TrOCR on handwritten/scanned text | `src/app/api/analyze/autopsy/extract-image/route.ts` (autopsy report transcription) | [Handwriting Recognition](https://www.kaggle.com/datasets/landlord/handwriting-recognition) (330K+ handwritten words) | ✅ Trained, exported, wired in |
+| **Detection** | Fine-tune YOLOv8 to detect guns/knives in evidence photos | New capability — structured detections instead of free-text extraction in `src/app/api/cases/[id]/digital/extract-image/route.ts` | [Guns-Knives Object Detection](https://www.kaggle.com/datasets/iqmansingh/guns-knives-object-detection) | Not started |
+
+### OCR track — important limitation
+
+The trained model was fine-tuned on **isolated single handwritten words**, not full
+multi-line document pages — that's what the training dataset actually contains. It
+transcribes individual words very well (5/5 correct on held-out sanity checks after
+training), but a photo of a full autopsy report page is a materially harder problem
+(line/paragraph segmentation, layout) that this model was never trained on. Treat the
+current integration as a v1: it's wired in and running, but real-world transcription
+quality on full report pages needs to be evaluated before relying on it — a stronger
+follow-up would fine-tune on line- or paragraph-level data, or add a word-segmentation
+step in front of this model.
 
 ## Why training happens on Kaggle, not this machine
 
@@ -40,23 +52,38 @@ file layout — run that cell first and adjust the paths in the following cell i
 printed structure doesn't match the comments. Kaggle dataset layouts vary by uploader
 even when they're nominally "the same kind" of dataset.
 
-## Bringing the trained model back into the app
+## Bringing a trained model back into the app
 
-Once you have `ocr-trocr.onnx` and `weapon-detect-yolov8.onnx` on this machine:
+Once you have exported `.onnx` files on this machine:
 
-1. Drop them in `ml/models/` (gitignored — these files are large).
-2. Next step (not done yet, pending trained weights) is a small inference layer using
-   [`onnxruntime-node`](https://www.npmjs.com/package/onnxruntime-node) so the models run
-   **in-process in the existing Next.js API routes** — no separate Python service needed.
-   I'll wire `/api/analyze/autopsy/extract-image` and
-   `/api/cases/[id]/digital/extract-image` to try the local ONNX model first and fall
-   back to the Groq vision call if the model file isn't present, so nothing breaks in the
-   meantime.
+1. Drop them in `ml/models/<model-name>/` — **note the expected layout**:
+   `config.json`, `tokenizer.json`, `preprocessor_config.json`, etc. go directly in that
+   folder; the `.onnx` weight files go in an `onnx/` subfolder underneath it (this is the
+   convention [`@huggingface/transformers`](https://www.npmjs.com/package/@huggingface/transformers)
+   expects). See `ml/models/trocr-onnx/` for a working example.
+2. Inference runs **in-process in the existing Next.js API routes** via
+   `@huggingface/transformers` (a JS/ONNX runtime — no separate Python service). See
+   `src/lib/ocr-local.ts` for the OCR wrapper.
+3. `next.config.mjs` externalizes `@huggingface/transformers`, `onnxruntime-node`, and
+   `sharp` from the webpack server bundle — required, since these ship native bindings /
+   WASM assets that webpack can't bundle correctly. Any new local-model integration needs
+   the same treatment.
+4. `ml/test-ocr.mjs` is a standalone Node script (not through Next.js) for sanity-checking
+   a model loads and runs inference correctly, independent of the app — useful when
+   debugging a new export before wiring it into a route.
 
 ## Status
 
-- [x] Datasets identified
-- [x] Training notebooks written (`notebooks/ocr_trocr_finetune.ipynb`, `notebooks/weapon_detection_yolov8.ipynb`)
-- [ ] Notebooks run on Kaggle (blocked on you running them — needs your Kaggle account)
-- [ ] `.onnx` weights brought back to this machine
-- [ ] `onnxruntime-node` inference layer wired into the API routes
+### OCR (TrOCR)
+- [x] Dataset identified, training notebook written
+- [x] Trained on Kaggle (3 epochs, 20K samples, ~2.8hr on T4 — see notebook for details)
+- [x] Exported to ONNX, downloaded to `ml/models/trocr-onnx/`
+- [x] Wired into `/api/analyze/autopsy/extract-image` via `src/lib/ocr-local.ts`, with
+      fallback to the Groq vision call if the local model files aren't present
+- [ ] Real-world accuracy on full report-page photos not yet evaluated (see limitation
+      note above — trained on single words, not full pages)
+
+### Detection (YOLOv8 weapons)
+- [x] Dataset identified, training notebook written
+- [ ] Not yet trained on Kaggle
+- [ ] Not yet wired into the app
